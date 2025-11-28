@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lin Lux Pro</title>
+    <!-- PWA Manifest and Service Worker (Kept for PWA functionality) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Deep blue-gray background */
+            min-height: 100vh;
+            color: #E0E0E0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Title text: Neon Gradient */
+        .neon-title {
+            font-size: 2.75rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            background: linear-gradient(90deg, #4DD0E1, #A855F7, #EC4899); 
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+        }
+
+        /* 核心卡片样式：新拟态和流体玻璃 */
+        .glass-card {
+            background: rgba(18, 18, 25, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(40, 40, 55, 0.4); 
+            border-radius: 24px;
+            box-shadow: 
+                -8px -8px 16px rgba(50, 60, 80, 0.1), 
+                8px 8px 16px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        /* Primary Button */
+        .btn-primary {
+            background: linear-gradient(135deg, #4F46E5, #9333EA);
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(100, 100, 200, 0.5);
+            font-weight: 700;
+            letter-spacing: 0.025em;
+            border-radius: 12px;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(90deg, #4F46E5, #9333EA);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(100, 100, 200, 0.6);
+        }
+        .btn-primary:active {
+             transform: translateY(0);
+             box-shadow: inset 0 3px 5px rgba(0,0,0,0.5);
+        }
+
+        /* Image Preview Box */
+        .image-box {
+            border: 1px solid rgba(60, 60, 80, 0.5);
+            min-height: 250px; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: #050508;
+            padding: 0;
+            border-radius: 16px;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        #fileInput {
+            display: none;
+        }
+        .preview-thumb {
+            border-radius: 12px;
+        }
+        
+        /* Loading Animation CSS START */
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .shimmer-bg {
+            background: linear-gradient(to right, #1A1A24 8%, #2C2C38 18%, #1A1A24 33%);
+            background-size: 800px 100%;
+            animation: shimmer 1.5s infinite linear;
+            border-radius: 12px;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .loading-text span { animation: pulse-dot 1s infinite alternate; }
+        .loading-text span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-text span:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Mode Option Card */
+        .mode-option {
+            background-color: rgba(30, 40, 50, 0.6);
+            color: #C0C0C0;
+            border: 1px solid rgba(60, 70, 90, 0.5);
+            border-radius: 14px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 85px;
+            height: 85px;
+            flex-shrink: 0;
+            font-size: 0.8rem;
+        }
+        .mode-option .main-text {
+            font-weight: 700;
+            font-size: 0.9rem;
+            line-height: 1.1;
+        }
+        /* KEY CHANGE: Default hide sub-text */
+        .mode-option .sub-text {
+            font-weight: 500;
+            font-size: 0.65rem;
+            color: #A0A0A0;
+            line-height: 1.1;
+            margin-top: 2px;
+            display: none; /* Initially hidden */
+        }
+        /* KEY CHANGE: Show sub-text only when selected */
+        .mode-option.selected-option .sub-text {
+            display: block;
+            color: #E0E0E0;
+        }
+
+        .mode-option.selected-option {
+            background: #3B82F6; 
+            color: white;
+            border-color: #A855F7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5); 
+            transform: scale(1.05);
+        }
+        .mode-option.selected-option svg { color: #fff; }
+        .mode-option svg { color: #A855F7; }
+
+        /* Color Pickers remain the same */
+        .color-picker-container {
+            background-color: rgba(30, 30, 40, 0.7);
+            border: 1px solid rgba(60, 70, 90, 0.5);
+            border-radius: 12px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); 
+            padding: 0;
+        }
+        .color-picker-simple-layout {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+        }
+        .color-picker-container input[type="color"] {
+            box-shadow: 0 0 0 2px rgba(18, 18, 25, 0.8);
+            border-radius: 8px;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .control-label {
+            @apply text-sm font-medium text-gray-300 mb-2;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .success-message {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+        
+        /* Gallery specific styles */
+        .gallery-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Fill the space */
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease-out;
+        }
+        .gallery-image:hover {
+            transform: scale(1.03);
+        }
+        .gallery-placeholder {
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7d7d7d;
+            font-size: 0.875rem;
+        }
+        /* Copywriter specific styles */
+        #copywriterOutput {
+            background-color: #0d1117;
+            color: #E0E0E0;
+            border: 1px solid #4B5563;
+            min-height: 100px;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            white-space: pre-wrap; /* Preserve line breaks */
+        }
+        #copyLoading {
+            color: #5EEAD4; /* Teal accent */
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div class="max-w-xl mx-auto p-4 flex flex-col min-h-screen">
+        <header class="text-center py-8">
+            <h1 class="neon-title">Lin Lux Pro</h1>
+            <p class="text-md text-gray-400 mt-2 font-medium">Smart Studio • 8K Optimized • Angle Reshaping</p>
+        </header>
+
+        <main class="flex-grow space-y-6 pb-8">
+            
+            <!-- 1. 图片上传和预览 -->
+            <div class="glass-card p-6 space-y-5 relative z-10">
+                <h2 class="text-lg font-bold text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-3 text-emerald-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M12 11.25V17.25M12 17.25L15 14.25M12 17.25L9 14.25M17.25 12h-10.5M17.25 12L14.25 9M17.25 12L14.25 15M6.75 12h10.5M6.75 12L9.75 9M6.75 12L9.75 15" />
+                    </svg>
+                    1. Upload Product Image
+                </h2>
+                
+                <!-- 简化回单图上传 UI -->
+                <label for="fileInput" class="block w-full text-center py-3 rounded-xl cursor-pointer transition btn-primary text-lg">
+                    Upload Photo
+                </label>
+                <input type="file" id="fileInput" accept="image/*" onchange="previewImage(event)">
+
+                <div id="originalImageContainer" class="image-box"> 
+                    <p id="uploadPlaceholder" class="text-gray-500 text-sm">Click to Upload for Correction</p>
+                    <img id="originalImage" class="preview-thumb hidden" alt="Original Image">
+                </div>
+
+                <p id="analysisHint" class="text-xs text-emerald-400 text-center hidden font-medium">
+                    <span class="animate-pulse">✨</span> **Product Loaded.** Click below to begin AI Reshaping!
+                </p>
+            </div>
+
+            <!-- 2. 可视化控制面板 -->
+            <div class="glass-card p-6 space-y-6 relative z-10">
+                <h2 class="text-lg font-bold text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-3 text-cyan-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0 5.014 0 .75.75 0 0 1 .945 1.066 5.25 5.25 0 0 1-6.904 0 .75.75 0 0 1 .945-1.066Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5V4.5m1.5 0h-3M18.9 11.1c.361.361.361.954 0 1.315l-1.97 1.97a3 3 0 1 1-3.6-3.6l1.97-1.97a.936.936 0 0 1 1.315 0Zm-.923.923c.306.306.306.804 0 1.11L14.7 14.7l.69.69a1.5 1.5 0 0 0 2.122-2.122l-1.97-1.97a.936.936 0 0 1 1.315 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15M12 4.5h.75m-.75 0h-.75M12 19.5v-15M12 19.5h.75m-.75 0h-.75M12 19.5L12 19.5" />
+                    </svg>
+                    2. Studio Controls
+                </h2>
+
+                <!-- 2.1 摄影棚模式/Preset -->
+                <div>
+                    <div class="control-label">Studio Mode Select</div>
+                    <div class="flex flex-wrap gap-3 pb-2 justify-start">
+                        <button class="mode-option" data-mode="Softbox">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/><path d="M18.3 5.7l-1.4 1.4"/><path d="M6.3 17.7l-1.4 1.4"/><path d="M6.3 6.3l-1.4-1.4"/><path d="M18.3 18.3l-1.4-1.4"/><circle cx="12" cy="12" r="4"/></svg>
+                            <span class="main-text">Softbox</span>
+                            <span class="sub-text">Soft, Even Light</span>
+                        </button>
+                        <button class="mode-option" data-mode="High Key">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><circle cx="12" cy="12" r="8"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/><path d="M16.95 7.05l1.41-1.41"/><path d="M5.64 18.36l1.41-1.41"/></svg>
+                            <span class="main-text">High Key</span>
+                            <span class="sub-text">Bright, Minimal Shadow</span>
+                        </button>
+                        <button class="mode-option" data-mode="Dramatic">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                            <span class="main-text">Dramatic</span>
+                            <span class="sub-text">Contrast & Shadow</span>
+                        </button>
+                        <button class="mode-option" data-mode="Minimalist">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M7 7h10v10H7z"/><path d="M12 12L12 12"/></svg>
+                            <span class="main-text">Minimalist</span>
+                            <span class="sub-text">Pure Focus</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 2.2 Rotation Angle -->
+                <div>
+                    <div class="control-label">Rotation Angle</div>
+                    <label for="rotationAnglePicker" class="block text-xs text-gray-400 mb-2">
+                        Current Angle: <span id="rotationAngleValue" class="font-bold text-indigo-300">0°</span> (New Angle per Generation)
+                    </label>
+                    <input type="range" id="rotationAnglePicker" min="0" max="359" value="0" step="5" class="w-full">
+                </div>
+
+
+                <!-- 2.3 Key Light Color & 2.4 Backdrop Color -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Key Light Color -->
+                    <div class="flex-1">
+                        <div class="control-label">Key Light Color</div>
+                        <div class="color-picker-container color-picker-simple-layout">
+                            <input type="color" id="lightColorPicker" value="#ffffff">
+                            <label class="text-sm text-gray-300 font-medium">Light</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Backdrop Color -->
+                    <div class="flex-1">
+                        <div class="control-label">Backdrop Color</div>
+                        <div class="color-picker-container color-picker-simple-layout">
+                            <input type="color" id="bgColorPicker" value="#f0f0f0">
+                            <label class="text-sm text-gray-300 font-medium">Backdrop</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 2.5 Prompt Preview (Debugging) -->
+                <textarea id="promptPreview" rows="2" class="w-full p-3 bg-gray-900 bg-opacity-70 rounded-xl text-xs text-gray-500 mt-4 border border-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition" readonly style="resize: none;"></textarea>
+
+                <!-- Action Button -->
+                <button id="relightButton" class="btn-primary w-full py-4 rounded-xl font-extrabold disabled:opacity-30 disabled:cursor-not-allowed text-lg" onclick="handleRelight()" disabled>
+                    ✨ Generate Final Studio Image
+                </button>
+            </div>
+
+            <!-- 3. Result Section -->
+            <div id="resultSection" class="glass-card p-6 rounded-xl space-y-5 relative z-10">
+                <h2 class="text-lg font-bold text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-3 text-purple-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5v-6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18V9M15 13.5L12 9M12 9L9 13.5" />
+                    </svg>
+                    3. Final Result
+                </h2>
+                <div id="resultImageContainer" class="image-box"> 
+                    <div id="loadingIndicator" class="absolute inset-0 flex flex-col justify-center items-center bg-black hidden">
+                        <div class="shimmer-bg w-full h-full absolute"></div>
+                        <div class="relative text-center text-indigo-300 z-10 p-4">
+                            <p class="text-xl font-medium loading-text">
+                                AI Reshaping Lighting
+                                <span class="text-indigo-400">.</span>
+                                <span class="text-indigo-400">.</span>
+                                <span class="text-indigo-400">.</span>
+                            </p>
+                            <p class="text-sm mt-2 text-gray-400">Please wait for 8K generation</p>
+                        </div>
+                    </div>
+                    <img id="resultImage" class="preview-thumb hidden" alt="AI Reshaped Image">
+                </div>
+
+                <!-- NEW AI Copywriter Section -->
+                <div class="space-y-3 pt-4">
+                    <button id="copyButton" class="btn-primary w-full py-2 rounded-xl font-semibold text-sm disabled:opacity-50" onclick="generateProductCopy()" disabled>
+                        ✨ Generate Product Copy
+                    </button>
+                    <div id="copyLoading" class="text-center text-sm hidden">
+                        <div class="loading-spinner inline-block w-4 h-4 border-2 border-t-2 border-teal-400 border-opacity-25 rounded-full animate-spin"></div>
+                        Analyzing image and writing copy...
+                    </div>
+                    <div id="copywriterOutput" class="text-sm text-gray-300" placeholder="Product description will appear here..."></div>
+                </div>
+
+                <!-- Download Button -->
+                <button id="downloadButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-40 hidden text-lg" onclick="downloadResult()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 inline-block mr-2 text-white">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Download Photo (PNG)
+                </button>
+
+                 <!-- Instruction -->
+                <div id="downloadInstruction" class="success-message p-4 rounded-xl text-sm hidden">
+                    🎉 **Download Successful!** File saved to your **"Downloads" folder**.<br>
+                    **[Tip]**: Please manually move the file to your photo gallery.
+                </div>
+            </div>
+
+            <!-- 4. Gallery Section (New) -->
+            <div id="gallery-section" class="glass-card p-6 rounded-xl space-y-4 relative z-10">
+                <h2 class="text-lg font-bold text-gray-100 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-3 text-pink-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5 2.25a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z" />
+                    </svg>
+                    4. Generated Gallery (Cloud Storage)
+                </h2>
+                <div id="gallery-content" class="grid grid-cols-3 gap-4 gallery-placeholder">
+                    Loading gallery...
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+        // Core AI Instruction Set (System Prompt)
+        const RELIGHT_PRESERVE_AND_OPTIMIZE_PREFIX = "HIGH PRIORITY: Completely and photorealistically RE-RENDER the product from the input image into a new, professional studio setting. The product's identity (brand, model, core features) MUST be preserved. Your task is to perform advanced product photography post-production: 1) **MANDATORY CORRECTION**: Correct any initial perspective/lens distortion (keystone effect) and poor shooting angles, ensuring the product's perspective is perfectly frontal and aligned for e-commerce. 2) **MANDATORY RE-LIGHTING**: COMPLETELY OVERRIDE the existing shadows and lighting on the product. RE-RENDER the product's surface, texture, and shadows based ONLY on the chosen Studio Mode and Light Color. 3) Eliminate all original imperfections and create a studio-quality image. (Generate in ultra-high resolution, 8K quality, photorealistic masterpiece). The final image MUST STRICTLY follow the style and color parameters: ";
+        
+        const MODEL_NAME = "gemini-2.5-flash-image-preview";
+        const TEXT_MODEL_NAME = "gemini-2.5-flash-preview-09-2025"; // Text analysis model
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=`;
+        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL_NAME}:generateContent?key=`;
+
+
+        // FIREBASE GLOBAL VARS
+        let db;
+        let auth;
+        let userId = 'anonymous'; // Default placeholder
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+
+        // State variables
+        let base64OriginalImage = null; // 存储用户上传的原始图片
+        let base64CorrectedImage = null; // 存储阶段 1 的结果，用于阶段 2 的输入
+        let imageMimeType = 'image/png';
+        let isBaseImageGenerated = false; // 阶段标记 (保留)
+        
+        const studioSettings = {
+            mode: 'Softbox',
+            lightColor: '#ffffff',
+            bgColor: '#f0f0f0',
+            rotationAngle: 0
+        };
+        
+        // UI element references
+        const fileInput = document.getElementById('fileInput');
+        const originalImage = document.getElementById('originalImage');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+
+        const analysisHint = document.getElementById('analysisHint');
+        const relightButton = document.getElementById('relightButton');
+        const promptPreview = document.getElementById('promptPreview');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultSection = document.getElementById('resultSection');
+        const resultImage = document.getElementById('resultImage');
+        const downloadButton = document.getElementById('downloadButton');
+        const downloadInstruction = document.getElementById('downloadInstruction');
+        const modeOptions = document.querySelectorAll('.mode-option');
+        const lightColorPicker = document.getElementById('lightColorPicker');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const rotationAnglePicker = document.getElementById('rotationAnglePicker');
+        const rotationAngleValue = document.getElementById('rotationAngleValue');
+        const galleryContent = document.getElementById('gallery-content'); // New Gallery reference
+        
+        // Copywriter elements
+        const copyButton = document.getElementById('copyButton');
+        const copyLoading = document.getElementById('copyLoading');
+        const copyOutput = document.getElementById('copywriterOutput');
+
+        // Storage for optional reference images (REMOVED HTML, BUT KEPT DECLARATION FOR CONSISTENCY)
+        // Note: The HTML for this section was removed, but the variable is declared here for stability.
+        let referenceImages = {}; 
+
+
+        /**
+         * FIREBASE INIT AND GALLERY LOGIC
+         */
+        async function initializeFirebase() {
+            try {
+                // Set Firestore log level (Debug only)
+                setLogLevel('error');
+
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                if (!firebaseConfig) throw new Error("Firebase config not found.");
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // FIX: Removed JSON.parse() from initialAuthToken
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase Auth Ready. User ID:", userId);
+                        setupGalleryListener();
+                    } else {
+                        console.log("User not authenticated.");
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                galleryContent.innerHTML = `<p class="text-red-400">Error loading services. Gallery disabled.</p>`;
+            }
+        }
+
+        function getGalleryCollectionRef() {
+            if (!db || !userId) return null;
+            return collection(db, 'artifacts', appId, 'users', userId, 'gallery');
+        }
+
+        function setupGalleryListener() {
+            const galleryRef = getGalleryCollectionRef();
+            if (!galleryRef) return;
+
+            const q = query(galleryRef); 
+
+            onSnapshot(q, (snapshot) => {
+                const galleryItems = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    galleryItems.push({ id: doc.id, ...data });
+                });
+
+                galleryItems.sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+
+                renderGallery(galleryItems);
+            }, (error) => {
+                console.error("Gallery Snapshot Error:", error);
+                galleryContent.innerHTML = `<p class="text-red-400">Failed to load gallery items.</p>`;
+            });
+        }
+
+        function renderGallery(items) {
+            if (items.length === 0) {
+                galleryContent.innerHTML = `<p class="text-gray-500 col-span-3">No images saved yet. Generate a final image to start your collection!</p>`;
+                return;
+            }
+
+            galleryContent.innerHTML = items.map(item => `
+                <div class="group relative aspect-square cursor-pointer" onclick="viewFullImage('${item.base64Image}')">
+                    <img src="${item.base64Image}" alt="Generated Product" class="gallery-image transition-opacity duration-300 group-hover:opacity-80">
+                    <button onclick="event.stopPropagation(); deleteImage('${item.id}')" class="absolute top-1 right-1 p-1 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition">
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-white">
+                            <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.5H4.058A2.75 2.75 0 0 0 6.75 7.058V18.25A2.75 2.75 0 0 0 9.5 21h7.75a2.75 2.75 0 0 0 2.75-2.75V7.058A2.75 2.75 0 0 0 17.942 6h-2.292v-.5A2.75 2.75 0 0 0 13.5 3.75h-4.75ZM6.75 7.058A1.25 1.25 0 0 1 8.25 5.5h4.75a1.25 1.25 0 0 1 1.25 1.25v1.25H6.75V7.058Z" clip-rule="evenodd" />
+                         </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        /**
+         * Compresses and saves the image to Firestore.
+         */
+        window.saveImageToGallery = async function(base64Image, prompt) {
+            const galleryRef = getGalleryCollectionRef();
+            if (!galleryRef) return;
+
+            // Step 1: Create an image object from the Data URL
+            const img = new Image();
+            img.src = base64Image;
+
+            img.onload = async () => {
+                // Step 2: Create a canvas and draw the image
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Step 3: Compress to JPEG with reduced quality (0.6)
+                const compressedDataURL = canvas.toDataURL('image/jpeg', 0.6);
+
+                try {
+                    await addDoc(galleryRef, {
+                        base64Image: compressedDataURL, // Store the compressed Data URL
+                        prompt: prompt,
+                        timestamp: serverTimestamp()
+                    });
+                    console.log("Image saved to Firestore gallery successfully.");
+                } catch (error) {
+                    console.error("Error saving image to gallery:", error);
+                    alert("Error: Could not save image to gallery (File size might still be too large or Firebase issue).");
+                }
+            };
+            
+            img.onerror = () => {
+                console.error("Error loading image for compression.");
+                alert("Error: Could not process image for saving.");
+            }
+        }
+
+        window.deleteImage = async function(id) {
+            // Placeholder function for demonstration. 
+            // NOTE: In a real app, this requires deleteDoc import.
+            console.warn(`Deleting image ${id} not implemented yet (requires deleteDoc import).`);
+        }
+        
+        window.viewFullImage = function(base64Image) {
+            // Simple modal to view full size image from gallery
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex justify-center items-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="max-w-full max-h-full overflow-auto relative">
+                    <button class="absolute top-4 right-4 p-2 rounded-full bg-red-600 text-white z-10" onclick="this.parentNode.parentNode.remove()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                            <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <img src="${base64Image}" class="max-w-screen max-h-screen object-contain" onclick="this.parentNode.parentNode.remove()">
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+
+        /**
+         * Updates all control states and constructs the AI Prompt.
+         */
+        function updateSettings() {
+            // Only read user configuration in Phase 2
+            if (isBaseImageGenerated) {
+                studioSettings.lightColor = lightColorPicker.value;
+                studioSettings.bgColor = bgColorPicker.value;
+                studioSettings.rotationAngle = parseInt(rotationAnglePicker.value);
+            } else {
+                 // Phase 1 defaults
+                 studioSettings.lightColor = '#ffffff';
+                 studioSettings.bgColor = '#f0f0f0';
+                 studioSettings.rotationAngle = 0;
+            }
+            
+            const modeDesc = getModeDescription(studioSettings.mode);
+            const lightColorName = hexToColorName(studioSettings.lightColor);
+            const bgColorName = hexToColorName(studioSettings.bgColor);
+            
+            let angleDesc = "";
+            const currentAngle = isBaseImageGenerated ? studioSettings.rotationAngle : 0;
+
+            if (currentAngle > 0 && currentAngle < 360) {
+                 angleDesc = ` The product must be displayed rotated clockwise by ${currentAngle} degrees.`;
+            } else {
+                 angleDesc = ` The product should maintain its original frontal orientation or a naturally optimized e-commerce view.`;
+            }
+            
+            // Construct Prompt
+            const prompt = `Studio Mode: ${modeDesc}. ${angleDesc} Lighting: Main light source color must be ${lightColorName}. Background: The background MUST be a solid, seamless studio color of ${bgColorName}.`;
+            
+            promptPreview.value = prompt;
+            updateRelightButtonState();
+        }
+
+        /**
+         * Helper: Updates UI display of the rotation angle.
+         */
+        window.updateRotationAngleDisplay = function(value) {
+            rotationAngleValue.textContent = `${value}°`;
+            updateSettings();
+        }
+
+        /**
+         * Converts HEX to user-friendly color name. (Kept for clarity)
+         */
+        function hexToColorName(hex) {
+            const r = parseInt(hex.substring(1, 3), 16);
+            const g = parseInt(hex.substring(3, 5), 16);
+            const b = parseInt(hex.substring(5, 7), 16);
+
+            if (hex === '#ffffff') return "pure white";
+            if (hex === '#000000') return "pure black";
+            if (hex === '#ff0000') return "vibrant red";
+            if (hex === '#ffa500') return "orange";
+            if (hex === '#ffff00') return "yellow";
+            if (hex === '#008000') return "green";
+            if (hex === '#0000ff') return "blue";
+            if (hex === '#800080') return "purple";
+            if (hex === '#ffc0cb') return "pink";
+            if (hex === '#a52a2a') return "brown";
+            if (hex === '#808080') return "gray";
+            if (hex === '#f0f0f0') return "light gray";
+            if (hex === '#add8e6') return "light blue";
+            if (hex === '#90ee90') return "light green";
+            if (hex === '#ffb6c1') return "light pink";
+            if (hex === '#d3d3d3') return "light grey";
+            if (hex === '#87ceeb') return "sky blue";
+            if (hex === '#ffd700') return "gold";
+            if (hex === '#c0c0c0') return "silver";
+
+            return `RGB(${r}, ${g}, ${b})`;
+        }
+
+        /**
+         * Returns detailed lighting description for AI prompt. (Kept for clarity)
+         */
+        function getModeDescription(mode) {
+            switch (mode) {
+                case 'Softbox':
+                    return "Professional softbox lighting setup, providing even, gentle illumination, eliminating harsh shadows, making product details natural and textured, creating a high-end e-commerce atmosphere. Reconstruct product's surface lighting.";
+                case 'High Key':
+                    return "High-key bright style, pure immaculate background, clear product outline, abundant light, creating a lively, clean, and modern e-commerce display effect. Reconstruct product's surface lighting.";
+                case 'Dramatic':
+                    return "Dramatic lighting utilizing strong contrast between light and shadow, emphasizing specific parts or textures of the product, creating artistic flair and visual impact, suitable for e-commerce images highlighting product features and narrative. Reconstruct product's surface lighting.";
+                case 'Minimalist':
+                    return "Minimalist lighting and composition, focusing all attention on the product itself, simple background, balanced lighting, pursuing pure, professional e-commerce display. Reconstruct product's surface lighting.";
+                default:
+                    return "Professional-grade product studio lighting, automatically optimizing visual effects to meet e-commerce standards. Reconstruct product's surface lighting.";
+            }
+        }
+
+        /**
+         * Binds click events to mode buttons. (Kept for clarity)
+         */
+        modeOptions.forEach(button => {
+            button.addEventListener('click', () => {
+                modeOptions.forEach(btn => btn.classList.remove('selected-option'));
+                button.classList.add('selected-option');
+                studioSettings.mode = button.dataset.mode;
+                updateSettings();
+            });
+        });
+
+        /**
+         * Handles single file upload. (Kept for clarity)
+         */
+        window.previewImage = function(event) {
+            const fileInput = event.target;
+            const file = fileInput.files[0];
+
+            if (!file) {
+                base64OriginalImage = null;
+                base64CorrectedImage = null;
+                isBaseImageGenerated = false;
+                originalImage.classList.add('hidden');
+                uploadPlaceholder.classList.remove('hidden');
+                analysisHint.classList.add('hidden');
+                updateRelightButtonState();
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                console.error("Please select an image file.");
+                updateRelightButtonState();
+                return;
+            }
+
+            imageMimeType = file.type;
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                base64OriginalImage = e.target.result.split(',')[1];
+                
+                originalImage.src = e.target.result;
+                originalImage.classList.remove('hidden');
+                uploadPlaceholder.classList.add('hidden');
+                analysisHint.classList.remove('hidden'); 
+                isBaseImageGenerated = false; // Reset state
+
+                // Reset UI/state to Phase 1 defaults
+                lightColorPicker.disabled = true;
+                bgColorPicker.disabled = true;
+                rotationAnglePicker.disabled = true;
+
+                resultImage.classList.add('hidden');
+                downloadButton.classList.add('hidden');
+                downloadInstruction.classList.add('hidden');
+                updateSettings();
+            };
+
+            reader.readAsDataURL(file);
+        };
+        
+        /**
+         * Checks image status and updates the primary button state/text. (Kept for clarity)
+         */
+        function updateRelightButtonState() {
+            const isImageReady = base64OriginalImage !== null;
+
+            if (isBaseImageGenerated) {
+                 relightButton.textContent = '✨ [Phase 2] Apply Style';
+                 lightColorPicker.disabled = false;
+                 bgColorPicker.disabled = false;
+                 rotationAnglePicker.disabled = false;
+            } else {
+                 relightButton.textContent = `✨ [Phase 1] Generate Base Correction`;
+                 lightColorPicker.disabled = true;
+                 bgColorPicker.disabled = true;
+                 rotationAnglePicker.disabled = true;
+            }
+            
+            relightButton.disabled = !isImageReady;
+        }
+
+        /**
+         * Handles the download logic. (Kept for clarity)
+         */
+        window.downloadResult = function() {
+            const imageURL = resultImage.src;
+            if (imageURL) {
+                // 1. Temporarily disable button to prevent multiple clicks and visual lag
+                downloadButton.disabled = true; 
+
+                const a = document.createElement('a');
+                a.href = imageURL;
+                a.download = `ai_studio_result_${Date.now()}.png`; 
+                document.body.appendChild(a);
+                
+                setTimeout(() => {
+                    a.click();
+                    document.body.removeChild(a);
+                    downloadInstruction.classList.remove('hidden'); 
+                    // 2. Re-enable button
+                    downloadButton.disabled = false; 
+                }, 100); 
+            }
+        };
+
+
+        /**
+         * Main control logic: Handles the two-phase generation.
+         */
+        window.handleRelight = async function() {
+            // Runtime check for critical elements
+            if (!resultSection || !loadingIndicator || !resultImage || !downloadButton || !downloadInstruction) {
+                 console.error("Error: Required DOM elements are null. Check HTML structure.");
+                 alert("Application initialization failed. Please try reloading the page.");
+                 return;
+            }
+
+
+            if (!base64OriginalImage) {
+                console.warn("Please upload an image first.");
+                return;
+            }
+
+            // Disable button and show loading
+            relightButton.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+            resultSection.classList.remove('hidden');
+            resultImage.classList.add('hidden');
+            downloadButton.classList.add('hidden');
+            downloadInstruction.classList.add('hidden');
+            
+            let currentPrompt = promptPreview.value.trim();
+            let base64ImageToProcess;
+            let parts = []; // Parts array for API Call
+
+            if (!isBaseImageGenerated) {
+                // PHASE 1: Structure Correction - Use original image as input
+                
+                // 1. Prompt for Structure Correction (Force default style to prioritize structure correction)
+                const promptForCorrection = `Studio Mode: Softbox lighting. The product should maintain its original frontal orientation or a naturally optimized e-commerce view. Lighting: Main light source color must be pure white. Background: The background MUST be a solid, seamless studio color of light gray.`;
+                currentPrompt = promptForCorrection; // Override user selection for Phase 1
+                base64ImageToProcess = base64OriginalImage;
+
+                // 2. Construct API Parts
+                parts.push({ text: currentPrompt });
+                parts.push({
+                    inlineData: { mimeType: imageMimeType, data: base64ImageToProcess }
+                });
+                
+            } else {
+                // PHASE 2: Apply Style - Use corrected image as input
+                
+                // 1. Use the corrected image as the main input
+                base64ImageToProcess = base64CorrectedImage;
+                
+                // 2. API Parts: Prompt + Corrected Image
+                // Use prompt generated by updateSettings (includes user-selected style)
+                parts.push({ text: currentPrompt });
+                parts.push({
+                    inlineData: {
+                        mimeType: imageMimeType,
+                        data: base64ImageToProcess
+                    }
+                });
+            }
+
+            try {
+                const generatedImageUrl = await callGeminiApi(parts);
+                
+                if (generatedImageUrl) {
+                    resultImage.src = generatedImageUrl;
+                    resultImage.classList.remove('hidden');
+                    downloadButton.classList.remove('hidden');
+
+                    // --- NEW: Save image to gallery on success ---
+                    const finalDataURL = `data:${imageMimeType};base64,${generatedImageUrl.split(',')[1]}`;
+                    await saveImageToGallery(finalDataURL, currentPrompt);
+                    // ---------------------------------------------
+
+                    if (!isBaseImageGenerated) {
+                        // Phase 1 complete: Store result and move to Phase 2 state
+                        base64CorrectedImage = generatedImageUrl.split(',')[1];
+                        isBaseImageGenerated = true;
+                        
+                        // Alert user to start Phase 2
+                        const modal = document.createElement('div');
+                        modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4';
+                        modal.innerHTML = `
+                            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl text-center max-w-sm">
+                                <h3 class="text-xl font-bold text-indigo-400 mb-3">Structure Corrected!</h3>
+                                <p class="text-gray-300 mb-4">The product's perspective and angle are now stable and clean. You can now freely adjust the Style, Angle, and Color, then click the button again to apply the new style.</p>
+                                <button class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition" onclick="this.parentNode.parentNode.remove()">Start Configuration</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        // Force UI update to enable controls
+                        updateSettings(); 
+                    }
+                } else {
+                    resultImage.classList.add('hidden');
+                    console.error("AI generation failed.");
+                }
+            } catch (error) {
+                console.error("API call failed:", error);
+                resultImage.classList.add('hidden'); 
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                updateRelightButtonState();
+            }
+        };
+
+        /**
+         * Calls Gemini API for image editing.
+         */
+        async function callGeminiApi(parts) {
+            // RELIGHT_PRESERVE_AND_OPTIMIZE_PREFIX 的内容作为 System Instruction 传递
+            const systemInstruction = { parts: [{ text: RELIGHT_PRESERVE_AND_OPTIMIZE_PREFIX }] };
+            
+            const payload = {
+                contents: [{ role: "user", parts: parts }],
+                generationConfig: {
+                    responseModalities: ['IMAGE']
+                },
+                systemInstruction: systemInstruction
+            };
+
+            let attempts = 0;
+            const maxAttempts = 5;
+            let delay = 1000;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429 || response.status >= 500) {
+                        if (attempts < maxAttempts - 1) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2; 
+                            attempts++;
+                            continue; 
+                        }
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    const base64ImgData = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                    
+                    if (base64ImgData) {
+                        return `data:image/png;base64,${base64ImgData}`;
+                    } else {
+                        console.error("API returned no image data.");
+                        return null;
+                    }
+
+                } catch (error) {
+                    if (attempts < maxAttempts - 1) {
+                         await new Promise(resolve => setTimeout(resolve, delay));
+                         delay *= 2; 
+                         attempts++;
+                         continue;
+                    }
+                    throw error;
+                }
+            }
+            return null;
+        }
+
+        window.onload = function() {
+            document.querySelector('[data-mode="Softbox"]').classList.add('selected-option');
+            
+            // 绑定颜色选择器
+            lightColorPicker.addEventListener('input', updateSettings);
+            bgColorPicker.addEventListener('input', updateSettings);
+            
+            // 绑定旋转角度滑块
+            rotationAnglePicker.addEventListener('input', (e) => updateRotationAngleDisplay(e.target.value));
+            
+            updateSettings();
+            initializeFirebase(); // Initialize Firebase on load
+        };
+
+        // 注册 PWA Service Worker (仅在 HTTPS 环境下工作)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('Service Worker registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
