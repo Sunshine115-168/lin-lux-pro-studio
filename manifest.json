@@ -1,19 +1,19 @@
 {
   "name": "Lin Lux Pro",
   "short_name": "LinLux",
-  "start_url": "./ai_pwa_studio.html",
+  "start_url": "./", /* 修复: 设置为根目录，让浏览器自动识别 index.html */
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#4F46E5",
   "description": "Smart Studio: AI-powered product photo reshaping and re-lighting for e-commerce.",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
