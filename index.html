@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lin Lux Pro</title>
-    <!-- PWA Manifest and Service Worker (Kept for PWA functionality) -->
+    <!-- PWA Manifest and Service Worker -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -74,7 +74,7 @@
         /* Image Preview Box */
         .image-box {
             border: 1px solid rgba(60, 60, 80, 0.5);
-            min-height: 250px; 
+            min-height: 250px; /* Adjusted back to main image size */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -439,7 +439,7 @@
         let base64OriginalImage = null; // 存储用户上传的原始图片
         let base64CorrectedImage = null; // 存储阶段 1 的结果，用于阶段 2 的输入
         let imageMimeType = 'image/png';
-        let isBaseImageGenerated = false; // 阶段标记 (保留)
+        let isBaseImageGenerated = false;
         
         const studioSettings = {
             mode: 'Softbox',
@@ -474,7 +474,6 @@
         const copyOutput = document.getElementById('copywriterOutput');
 
         // Storage for optional reference images (REMOVED HTML, BUT KEPT DECLARATION FOR CONSISTENCY)
-        // Note: The HTML for this section was removed, but the variable is declared here for stability.
         let referenceImages = {}; 
 
 
@@ -1015,7 +1014,7 @@
         // 注册 PWA Service Worker (仅在 HTTPS 环境下工作)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('service-worker.js') // Using relative path
                     .then(registration => {
                         console.log('Service Worker registered: ', registration);
                     })
