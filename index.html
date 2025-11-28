@@ -339,7 +339,7 @@
 
                 <!-- Action Button -->
                 <button id="relightButton" class="btn-primary w-full py-4 rounded-xl font-extrabold disabled:opacity-30 disabled:cursor-not-allowed text-lg" onclick="handleRelight()" disabled>
-                    ✨ [Phase 1] Generate Base Correction
+                    ✨ Generate Final Studio Image
                 </button>
             </div>
 
@@ -424,8 +424,12 @@
         
         const MODEL_NAME = "gemini-2.5-flash-image-preview";
         const TEXT_MODEL_NAME = "gemini-2.5-flash-preview-09-2025"; // Text analysis model
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=`;
-        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL_NAME}:generateContent?key=`;
+        
+        // --- API KEY CONFIGURATION ---
+        const GEMINI_API_KEY = "AIzaSyA8mfQfPPpUlJx0ZmaP9rNbbYHrWGOQhhc"; // Inserted API Key
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+        const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TEXT_MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
+        // -----------------------------
 
 
         // FIREBASE GLOBAL VARS
@@ -472,9 +476,6 @@
         const copyButton = document.getElementById('copyButton');
         const copyLoading = document.getElementById('copyLoading');
         const copyOutput = document.getElementById('copywriterOutput');
-
-        // Storage for optional reference images (REMOVED HTML, BUT KEPT DECLARATION FOR CONSISTENCY)
-        let referenceImages = {}; 
 
 
         /**
@@ -631,24 +632,17 @@
          * Updates all control states and constructs the AI Prompt.
          */
         function updateSettings() {
-            // Only read user configuration in Phase 2
-            if (isBaseImageGenerated) {
-                studioSettings.lightColor = lightColorPicker.value;
-                studioSettings.bgColor = bgColorPicker.value;
-                studioSettings.rotationAngle = parseInt(rotationAnglePicker.value);
-            } else {
-                 // Phase 1 defaults
-                 studioSettings.lightColor = '#ffffff';
-                 studioSettings.bgColor = '#f0f0f0';
-                 studioSettings.rotationAngle = 0;
-            }
+            // 单步模式下，始终读取所有配置
+            studioSettings.lightColor = lightColorPicker.value;
+            studioSettings.bgColor = bgColorPicker.value;
+            studioSettings.rotationAngle = parseInt(rotationAnglePicker.value);
             
             const modeDesc = getModeDescription(studioSettings.mode);
             const lightColorName = hexToColorName(studioSettings.lightColor);
             const bgColorName = hexToColorName(studioSettings.bgColor);
             
             let angleDesc = "";
-            const currentAngle = isBaseImageGenerated ? studioSettings.rotationAngle : 0;
+            const currentAngle = studioSettings.rotationAngle;
 
             if (currentAngle > 0 && currentAngle < 360) {
                  angleDesc = ` The product must be displayed rotated clockwise by ${currentAngle} degrees.`;
@@ -741,8 +735,6 @@
 
             if (!file) {
                 base64OriginalImage = null;
-                base64CorrectedImage = null;
-                isBaseImageGenerated = false;
                 originalImage.classList.add('hidden');
                 uploadPlaceholder.classList.remove('hidden');
                 analysisHint.classList.add('hidden');
@@ -766,12 +758,11 @@
                 originalImage.classList.remove('hidden');
                 uploadPlaceholder.classList.add('hidden');
                 analysisHint.classList.remove('hidden'); 
-                isBaseImageGenerated = false; // Reset state
 
-                // Reset UI/state to Phase 1 defaults
-                lightColorPicker.disabled = true;
-                bgColorPicker.disabled = true;
-                rotationAnglePicker.disabled = true;
+                // Ensure all controls are enabled immediately for single step flow
+                lightColorPicker.disabled = false;
+                bgColorPicker.disabled = false;
+                rotationAnglePicker.disabled = false;
 
                 resultImage.classList.add('hidden');
                 downloadButton.classList.add('hidden');
@@ -788,18 +779,22 @@
         function updateRelightButtonState() {
             const isImageReady = base64OriginalImage !== null;
 
-            if (isBaseImageGenerated) {
-                 relightButton.textContent = '✨ [Phase 2] Apply Style';
+            // Simplified to single step button text
+            relightButton.textContent = `✨ Generate Final Studio Image`; 
+            
+            // Enable all controls if image is ready, regardless of 'isBaseImageGenerated'
+            if (isImageReady) {
                  lightColorPicker.disabled = false;
                  bgColorPicker.disabled = false;
                  rotationAnglePicker.disabled = false;
+                 copyButton.disabled = false; 
             } else {
-                 relightButton.textContent = `✨ [Phase 1] Generate Base Correction`;
                  lightColorPicker.disabled = true;
                  bgColorPicker.disabled = true;
                  rotationAnglePicker.disabled = true;
+                 copyButton.disabled = true;
             }
-            
+
             relightButton.disabled = !isImageReady;
         }
 
@@ -829,7 +824,7 @@
 
 
         /**
-         * Main control logic: Handles the two-phase generation.
+         * Main control logic: SINGLE PHASE GENERATION (Most Stable)
          */
         window.handleRelight = async function() {
             // Runtime check for critical elements
@@ -847,46 +842,27 @@
 
             // Disable button and show loading
             relightButton.disabled = true;
+            copyButton.disabled = true; // Disable copy during generation
             loadingIndicator.classList.remove('hidden');
             resultSection.classList.remove('hidden');
             resultImage.classList.add('hidden');
             downloadButton.classList.add('hidden');
             downloadInstruction.classList.add('hidden');
+            copyOutput.textContent = ''; // Clear previous copy
+
             
             let currentPrompt = promptPreview.value.trim();
-            let base64ImageToProcess;
             let parts = []; // Parts array for API Call
 
-            if (!isBaseImageGenerated) {
-                // PHASE 1: Structure Correction - Use original image as input
-                
-                // 1. Prompt for Structure Correction (Force default style to prioritize structure correction)
-                const promptForCorrection = `Studio Mode: Softbox lighting. The product should maintain its original frontal orientation or a naturally optimized e-commerce view. Lighting: Main light source color must be pure white. Background: The background MUST be a solid, seamless studio color of light gray.`;
-                currentPrompt = promptForCorrection; // Override user selection for Phase 1
-                base64ImageToProcess = base64OriginalImage;
-
-                // 2. Construct API Parts
-                parts.push({ text: currentPrompt });
-                parts.push({
-                    inlineData: { mimeType: imageMimeType, data: base64ImageToProcess }
-                });
-                
-            } else {
-                // PHASE 2: Apply Style - Use corrected image as input
-                
-                // 1. Use the corrected image as the main input
-                base64ImageToProcess = base64CorrectedImage;
-                
-                // 2. API Parts: Prompt + Corrected Image
-                // Use prompt generated by updateSettings (includes user-selected style)
-                parts.push({ text: currentPrompt });
-                parts.push({
-                    inlineData: {
-                        mimeType: imageMimeType,
-                        data: base64ImageToProcess
-                    }
-                });
-            }
+            // SINGLE PHASE: Use original image and current settings
+            parts.push({ text: currentPrompt });
+            parts.push({
+                inlineData: {
+                    mimeType: imageMimeType,
+                    data: base64OriginalImage
+                }
+            });
+            
 
             try {
                 const generatedImageUrl = await callGeminiApi(parts);
@@ -896,30 +872,10 @@
                     resultImage.classList.remove('hidden');
                     downloadButton.classList.remove('hidden');
 
-                    // --- NEW: Save image to gallery on success ---
+                    // --- Save image to gallery on success ---
                     const finalDataURL = `data:${imageMimeType};base64,${generatedImageUrl.split(',')[1]}`;
                     await saveImageToGallery(finalDataURL, currentPrompt);
                     // ---------------------------------------------
-
-                    if (!isBaseImageGenerated) {
-                        // Phase 1 complete: Store result and move to Phase 2 state
-                        base64CorrectedImage = generatedImageUrl.split(',')[1];
-                        isBaseImageGenerated = true;
-                        
-                        // Alert user to start Phase 2
-                        const modal = document.createElement('div');
-                        modal.className = 'fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4';
-                        modal.innerHTML = `
-                            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl text-center max-w-sm">
-                                <h3 class="text-xl font-bold text-indigo-400 mb-3">Structure Corrected!</h3>
-                                <p class="text-gray-300 mb-4">The product's perspective and angle are now stable and clean. You can now freely adjust the Style, Angle, and Color, then click the button again to apply the new style.</p>
-                                <button class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition" onclick="this.parentNode.parentNode.remove()">Start Configuration</button>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-                        // Force UI update to enable controls
-                        updateSettings(); 
-                    }
                 } else {
                     resultImage.classList.add('hidden');
                     console.error("AI generation failed.");
@@ -930,6 +886,47 @@
             } finally {
                 loadingIndicator.classList.add('hidden');
                 updateRelightButtonState();
+            }
+        };
+
+        /**
+         * LLM Copywriter Feature
+         */
+        window.generateProductCopy = async function() {
+            const currentImage = resultImage.src;
+            if (!currentImage || currentImage.classList.contains('hidden')) {
+                alert("Please generate the final image before creating product copy.");
+                return;
+            }
+
+            copyButton.disabled = true;
+            copyLoading.classList.remove('hidden');
+            copyOutput.textContent = '';
+            
+            try {
+                // 1. Get corrected image and style info
+                const imageBase64 = currentImage.split(',')[1];
+                const mode = studioSettings.mode;
+                const lightColor = hexToColorName(studioSettings.lightColor);
+                const bgColor = hexToColorName(studioSettings.bgColor);
+
+                const userQuery = `Analyze this product image, which has a "${mode}" style, "${lightColor}" lighting, and a "${bgColor}" background. Write a compelling, professional, e-commerce product description. The description should include: 1) A catchy title/tagline. 2) 3-4 key selling points formatted as a bullet list. 3) A concise product summary. Generate the output in Markdown format.`;
+
+                const parts = [
+                    { text: userQuery },
+                    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
+                ];
+                
+                const responseText = await callTextApi(parts);
+
+                copyOutput.textContent = responseText;
+
+            } catch (error) {
+                console.error("Copywriter API Failed:", error);
+                copyOutput.textContent = "Error: Could not generate copy. Ensure the image is clear or try again.";
+            } finally {
+                copyButton.disabled = false;
+                copyLoading.classList.add('hidden');
             }
         };
 
@@ -996,6 +993,29 @@
             }
             return null;
         }
+
+        /**
+         * Calls Gemini API for text generation (multimodal input).
+         */
+        async function callTextApi(parts) {
+            const payload = {
+                contents: [{ role: "user", parts: parts }]
+            };
+
+            const response = await fetch(textApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Text API HTTP error! Status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text || "No description generated.";
+        }
+
 
         window.onload = function() {
             document.querySelector('[data-mode="Softbox"]').classList.add('selected-option');
